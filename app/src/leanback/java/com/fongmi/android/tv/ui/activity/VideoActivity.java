@@ -84,6 +84,7 @@ import com.fongmi.android.tv.databinding.ActivityVideoBinding;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
+import com.fongmi.android.tv.tvhome.TvHomeManager;
 import com.fongmi.android.tv.impl.CustomTarget;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.model.SearchProgress;
@@ -1778,8 +1779,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void onKeep() {
         Keep keep = Keep.find(getHistoryKey());
         Notify.show(keep != null ? R.string.keep_del : R.string.keep_add);
-        if (keep != null) keep.delete();
-        else createKeep();
+        if (keep != null) {
+            keep.delete();
+            TvHomeManager.onKeepChanged();
+        } else {
+            createKeep();
+        }
         checkKeepImg();
     }
 
@@ -3729,14 +3734,22 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         Task.execute(() -> {
             if (history.getDuration() > 0) history.merge().save();
             else history.save();
-            if (exit) RefreshEvent.history();
+            if (exit) {
+                TvHomeManager.onHistoryChangedImmediate(history);
+                RefreshEvent.history();
+            } else {
+                TvHomeManager.onHistoryChanged(history);
+            }
         });
     }
 
     private void syncHistory() {
         if (mHistory == null || Setting.isIncognito()) return;
         History history = mHistory.copy();
-        Task.execute(history::save);
+        Task.execute(() -> {
+            history.save();
+            TvHomeManager.onHistoryChanged(history);
+        });
     }
 
     private void updateHistory(Episode item) {
@@ -3770,6 +3783,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         keep.setSiteName(getSite().getName());
         keep.setCreateTime(System.currentTimeMillis());
         keep.save();
+        TvHomeManager.onKeepChanged();
     }
 
     private void updateKeep() {
@@ -3778,6 +3792,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             keep.setVodName(mHistory.getVodName());
             keep.setVodPic(mHistory.getVodPic());
             keep.save();
+            TvHomeManager.onKeepChanged();
         }
     }
 

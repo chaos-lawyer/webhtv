@@ -27,6 +27,7 @@
     <string name="exit_confirm_title">確定退出應用？</string>
     <string name="exit_confirm_message">目前頁面將關閉；如果正在播放，會繼續留在後台。</string>
     <string name="exit_confirm_positive">確認退出</string>
+    <string name="app_exit_hint">再次按返回退出應用</string>
 
     <!-- Play -->
     <string name="play">播放</string>

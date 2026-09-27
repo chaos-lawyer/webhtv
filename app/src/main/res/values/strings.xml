@@ -28,6 +28,7 @@
     <string name="exit_confirm_title">Exit app?</string>
     <string name="exit_confirm_message">The current page will close. Background playback will continue if it is running.</string>
     <string name="exit_confirm_positive">Exit</string>
+    <string name="app_exit_hint">Press back again to exit</string>
 
     <!-- Play -->
     <string name="play">Play</string>

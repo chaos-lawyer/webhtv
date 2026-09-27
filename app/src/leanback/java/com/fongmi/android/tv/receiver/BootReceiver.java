@@ -10,12 +10,15 @@ import androidx.annotation.NonNull;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.api.config.LiveConfig;
+import com.fongmi.android.tv.tvhome.TvHomeManager;
 
 public class BootReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || !isBootAction(intent.getAction())) return;
+        TvHomeManager.init(context);
+        TvHomeManager.syncAll();
         registerCallback();
     }
 
@@ -40,6 +43,7 @@ public class BootReceiver extends BroadcastReceiver {
 
         private void doJob() {
             LiveConfig.get().init().load();
+            TvHomeManager.fetchRecommendationsAsync();
             ((ConnectivityManager) App.get().getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(this);
         }
     }

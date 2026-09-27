@@ -193,6 +193,7 @@ dependencies {
     implementation libs.tensorflow.lite
     implementation libs.zxing.core
     leanbackImplementation libs.leanback
+    leanbackImplementation libs.tvprovider
     leanbackImplementation libs.androidautosize
     leanbackImplementation libs.zxing.android.embedded
     mobileImplementation libs.biometric

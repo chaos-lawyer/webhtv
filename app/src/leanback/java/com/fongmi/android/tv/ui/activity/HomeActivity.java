@@ -51,13 +51,14 @@ import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.service.DLNARendererService;
 import com.fongmi.android.tv.service.PlaybackService;
 import com.fongmi.android.tv.setting.Setting;
+import com.fongmi.android.tv.tvhome.TvHomeDeepLink;
+import com.fongmi.android.tv.tvhome.TvHomeManager;
 import com.fongmi.android.tv.ui.adapter.BaseDiffCallback;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
 import com.fongmi.android.tv.ui.custom.CustomTitleView;
-import com.fongmi.android.tv.ui.dialog.ExitConfirmDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.ui.presenter.FuncPresenter;
 import com.fongmi.android.tv.ui.presenter.HeaderPresenter;
@@ -113,6 +114,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private String webDefaultChromeMode = TV_FULL;
     private boolean webToolbarVisible = true;
     private boolean loadingHomeCategory;
+    private long mExitTime;
 
     private Site getHome() {
         return VodConfig.get().getHome();
@@ -234,7 +236,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void checkAction(Intent intent) {
-        if (Intent.ACTION_SEND.equals(intent.getAction())) {
+        if (TvHomeDeepLink.isDeepLink(intent)) {
+            TvHomeDeepLink.handle(this, intent);
+        } else if (Intent.ACTION_SEND.equals(intent.getAction())) {
             VideoActivity.push(this, intent.getStringExtra(Intent.EXTRA_TEXT));
         } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
             PermissionUtil.requestFile(this, allGranted -> checkType(intent));
@@ -300,6 +304,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             }
             mResult = result;
             addVideo(result);
+            if (!result.getList().isEmpty() && !getHome().getKey().isEmpty()) {
+                TvHomeManager.onRecommendChanged(getHome().getKey(), result.getList());
+            }
         });
     }
 
@@ -354,6 +361,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         getHistory();
         getVideo();
         setFocus();
+        TvHomeManager.init(this);
         App.post(this::prewarmWebView, 1500);
         SpiderDebug.log("startup", "home showContent end cost=%sms", System.currentTimeMillis() - App.time());
     }
@@ -395,6 +403,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             mBinding.recycler.setVisibility(View.GONE);
             mBinding.progressLayout.showContent();
             showWebOverlay();
+            TvHomeManager.fetchRecommendationsAsync();
             return;
         }
         if (mWeb != null) mWeb.hide();
@@ -493,6 +502,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void clearHistory() {
         mAdapter.removeItems(getHistoryIndex(), 1);
         History.deleteAndSync(VodConfig.getCid());
+        TvHomeManager.onHistoryCleared();
         mPresenter.setDelete(false);
         mHistoryAdapter.clear();
     }
@@ -633,6 +643,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onItemDelete(History item) {
         mHistoryAdapter.remove(item.deleteAndSync());
+        TvHomeManager.onHistoryDeleted(item);
         if (mHistoryAdapter.size() > 0) return;
         mAdapter.removeItems(getHistoryIndex(), 1);
         mPresenter.setDelete(false);
@@ -746,6 +757,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (mWeb != null) mWeb.onPause();
         super.onPause();
         mClock.stop();
+        mExitTime = 0;
     }
 
     @Override
@@ -776,7 +788,13 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void exitHome() {
-        ExitConfirmDialog.create(this::confirmExitHome).show(this);
+        if (System.currentTimeMillis() - mExitTime > 2000) {
+            mExitTime = System.currentTimeMillis();
+            Notify.show(R.string.app_exit_hint);
+        } else {
+            Notify.dismissToast();
+            confirmExitHome();
+        }
     }
 
     private void confirmExitHome() {
